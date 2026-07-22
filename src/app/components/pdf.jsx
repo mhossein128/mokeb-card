@@ -6,7 +6,7 @@ import ImportData from "./import-xlsx";
 import { useReactToPrint } from "react-to-print";
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
-import html2canvas from "html2canvas";
+import { renderCardToCanvas } from "./render-card-canvas";
 
 const DEFAULT_BG = "/1405/card-1405-01.jpg";
 
@@ -66,13 +66,13 @@ const LAYOUT_1405 = {
     left: 19.07,
     width: 61.85,
     height: 8.47,
-    fontSize: 13,
-    fontWeight: 600,
+    fontSize: 15,
+    fontWeight: 700,
   },
   photo: {
     top: 13.48,
-    left: 31,
-    width: 38,
+    left: 30.5,
+    width: 39,
     height: 39.16,
     borderRadius: 0.35,
   },
@@ -84,7 +84,7 @@ const LAYOUT_SQUARE = {
     left: 49.15,
     width: 43,
     height: 5,
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: 700,
   },
   role: {
@@ -92,8 +92,8 @@ const LAYOUT_SQUARE = {
     left: 49.15,
     width: 43,
     height: 4,
-    fontSize: 12,
-    fontWeight: 600,
+    fontSize: 15,
+    fontWeight: 700,
   },
   photo: {
     top: 33.8,
@@ -108,11 +108,11 @@ const LAYOUT_SQUARE = {
 const DEFAULT_LAYOUT = LAYOUT_1405;
 
 const FONT_WEIGHTS = [
-  { value: 400, label: "عادی" },
-  { value: 600, label: "نیمه‌ضخیم" },
-  { value: 700, label: "ضخیم" },
-  { value: 800, label: "خیلی‌ضخیم" },
-  { value: 900, label: "سیاه" },
+  { value: 400, label: "Regular" },
+  { value: 600, label: "SemiBold" },
+  { value: 700, label: "Bold" },
+  { value: 800, label: "ExtraBold" },
+  { value: 900, label: "Black" },
 ];
 
 const NumberField = ({ label, value, onChange, step = 0.1, min, max, unit }) => (
@@ -134,7 +134,7 @@ const NumberField = ({ label, value, onChange, step = 0.1, min, max, unit }) => 
 );
 
 const WeightField = ({ label, value, onChange }) => (
-  <label className="block col-span-2">
+  <label className="block">
     <span className="field-label">{label}</span>
     <select
       className="field-input"
@@ -143,7 +143,7 @@ const WeightField = ({ label, value, onChange }) => (
     >
       {FONT_WEIGHTS.map((item) => (
         <option key={item.value} value={item.value}>
-          {item.label} ({item.value})
+          {item.label}
         </option>
       ))}
     </select>
@@ -185,116 +185,12 @@ const PDF = () => {
   }, []);
 
   const captureCard = async (card) => {
-    await Promise.all(
-      [...card.querySelectorAll("img")].map((img) =>
-        img.complete
-          ? Promise.resolve()
-          : new Promise((resolve) => {
-              img.onload = resolve;
-              img.onerror = resolve;
-            })
-      )
-    );
-
-    const width = card.offsetWidth;
-    const height = card.offsetHeight;
-    const cardRect = card.getBoundingClientRect();
-
-    const layers = [...card.children].map((child) => {
-      const rect = child.getBoundingClientRect();
-      const style = getComputedStyle(child);
-      return {
-        hide: child.tagName === "INPUT",
-        top: rect.top - cardRect.top,
-        left: rect.left - cardRect.left,
-        width: rect.width,
-        height: rect.height,
-        borderRadius: style.borderRadius,
-        objectFit: style.objectFit,
-        fontSize: style.fontSize,
-        fontWeight: style.fontWeight,
-        fontFamily: style.fontFamily,
-        color: style.color,
-        lineHeight: style.lineHeight,
-        whiteSpace: style.whiteSpace,
-        textAlign: style.textAlign,
-        letterSpacing: style.letterSpacing,
-      };
-    });
-
-    return html2canvas(card, {
-      scale: 2,
-      width,
-      height,
-      windowWidth: width,
-      windowHeight: height,
-      x: 0,
-      y: 0,
-      scrollX: 0,
-      scrollY: 0,
-      useCORS: true,
-      allowTaint: true,
-      backgroundColor: "#ffffff",
-      logging: false,
-      imageTimeout: 15000,
-      onclone: (_doc, clone) => {
-        clone.style.width = `${width}px`;
-        clone.style.height = `${height}px`;
-        clone.style.margin = "0";
-        clone.style.border = "none";
-        clone.style.outline = "none";
-        clone.style.boxSizing = "border-box";
-        clone.style.position = "relative";
-        clone.style.overflow = "hidden";
-        clone.style.transform = "none";
-        clone.style.inset = "auto";
-
-        [...clone.children].forEach((child, index) => {
-          const layer = layers[index];
-          if (!layer || layer.hide) {
-            child.style.display = "none";
-            return;
-          }
-
-          const isBackground = index === 0 && child.tagName === "IMG";
-
-          child.style.position = "absolute";
-          child.style.top = isBackground ? "0px" : `${Math.round(layer.top * 100) / 100}px`;
-          child.style.left = isBackground ? "0px" : `${Math.round(layer.left * 100) / 100}px`;
-          child.style.width = isBackground ? "100%" : `${Math.round(layer.width * 100) / 100}px`;
-          child.style.height = isBackground ? "100%" : `${Math.round(layer.height * 100) / 100}px`;
-          child.style.right = "auto";
-          child.style.bottom = "auto";
-          child.style.margin = "0";
-          child.style.transform = "none";
-          child.style.borderRadius = isBackground ? "0" : layer.borderRadius;
-          child.style.boxSizing = "border-box";
-          child.style.zIndex = isBackground ? "1" : "2";
-
-          if (child.tagName === "IMG") {
-            child.style.objectFit = isBackground
-              ? "fill"
-              : layer.objectFit || "cover";
-            child.style.maxWidth = "none";
-            child.style.maxHeight = "none";
-          }
-
-          if (child.tagName === "P") {
-            child.style.display = "flex";
-            child.style.alignItems = "center";
-            child.style.justifyContent = "center";
-            child.style.fontSize = layer.fontSize;
-            child.style.fontWeight = layer.fontWeight;
-            child.style.fontFamily = layer.fontFamily;
-            child.style.color = layer.color;
-            child.style.lineHeight = layer.lineHeight;
-            child.style.whiteSpace = layer.whiteSpace;
-            child.style.textAlign = layer.textAlign;
-            child.style.letterSpacing = layer.letterSpacing;
-            child.style.padding = "0";
-          }
-        });
-      },
+    return renderCardToCanvas({
+      cardEl: card,
+      layout,
+      cardWidthCm: cardSize.width,
+      cardHeightCm: cardSize.height,
+      scale: 3,
     });
   };
 
@@ -310,7 +206,6 @@ const PDF = () => {
 
       for (let i = 0; i < cards.length; i++) {
         const card = cards[i];
-        card.scrollIntoView({ block: "nearest", inline: "nearest" });
         const canvas = await captureCard(card);
 
         const blob = await new Promise((resolve) =>
@@ -439,7 +334,7 @@ const PDF = () => {
           )}
 
           {activeTab === "fields" && (
-            <div className="space-y-4">
+            <div className="space-y-4 rounded-xl border border-[var(--line)] bg-white/40 p-3">
               <div className="flex rounded-xl bg-[var(--paper-deep)]/70 p-1">
                 {[
                   { id: "name", label: "نام" },
@@ -539,7 +434,7 @@ const PDF = () => {
                   />
                   <WeightField
                     label="وزن فونت"
-                    value={layout.role.fontWeight ?? 600}
+                    value={layout.role.fontWeight ?? 700}
                     onChange={(v) => updateField("role", "fontWeight", v)}
                   />
                 </div>

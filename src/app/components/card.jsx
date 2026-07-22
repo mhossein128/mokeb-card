@@ -4,6 +4,7 @@ import personal from "@/../public/personal.jpg";
 import { useMemo, useRef, useState } from "react";
 import { twMerge } from "tailwind-merge";
 import { ImageCropper } from "./cropper";
+import { CM_TO_PX } from "./units";
 
 function Card({
   src,
@@ -39,17 +40,22 @@ function Card({
     setShowCropper(false);
   };
 
-  const margin = useMemo(() => `${marginBottom}cm`, [marginBottom]);
+  const widthPx = Math.round(cardWidth * CM_TO_PX);
+  const heightPx = Math.round(cardHeight * CM_TO_PX);
+  const margin = useMemo(
+    () => `${Math.round(marginBottom * CM_TO_PX)}px`,
+    [marginBottom]
+  );
 
   const nameFont =
-    layout?.name?.fontSize ?? (nameSize === "sm" ? 12 : 14);
+    layout?.name?.fontSize ?? (nameSize === "sm" ? 12 : 15);
   const roleFont =
-    layout?.role?.fontSize ?? (roleSize === "sm" ? 10 : 12);
+    layout?.role?.fontSize ?? (roleSize === "sm" ? 12 : 15);
   const nameWeight = layout?.name?.fontWeight ?? 700;
-  const roleWeight = layout?.role?.fontWeight ?? 600;
+  const roleWeight = layout?.role?.fontWeight ?? 700;
 
   const radius = layout?.photo?.borderRadius ?? 0.35;
-  const radiusPx = `${((radius * 96) / 2.54).toFixed(2)}px`;
+  const radiusPx = `${(radius * CM_TO_PX).toFixed(2)}px`;
   const photoRadius = layout?.photo?.asymmetric
     ? `0 ${radiusPx}`
     : radiusPx;
@@ -61,18 +67,21 @@ function Card({
         "card-item relative box-border overflow-hidden bg-white outline outline-1 outline-black"
       )}
       style={{
-        width: `${cardWidth}cm`,
-        height: `${cardHeight}cm`,
+        width: `${widthPx}px`,
+        height: `${heightPx}px`,
         marginBottom: (index + 1) % countPerPage === 0 ? margin : undefined,
       }}
     >
       <img
-        className="absolute z-10 top-0 left-0 h-full w-full"
+        data-card-bg
+        className="pointer-events-none absolute z-10 top-0 left-0 h-full w-full"
         src={cardBackground || "/1405/card-1405-01.jpg"}
         alt=""
         style={{ objectFit: "fill" }}
+        draggable={false}
       />
       <p
+        data-card-name
         className="absolute z-20 flex items-center justify-center text-center text-nowrap text-[#0b1f4d]"
         style={{
           top: `${layout?.name?.top ?? 59.5}%`,
@@ -87,6 +96,7 @@ function Card({
         {firstName} {lastName}
       </p>
       <p
+        data-card-role
         className="absolute z-20 flex items-center justify-center text-center text-nowrap text-[#0b1f4d]"
         style={{
           top: `${layout?.role?.top ?? 68.85}%`,
@@ -101,17 +111,19 @@ function Card({
         {role}
       </p>
       <img
+        data-card-photo
         onClick={handleSelectImg}
         src={currentImg}
         className="absolute z-20 cursor-pointer object-cover"
         style={{
           top: `${layout?.photo?.top ?? 13.48}%`,
-          left: `${layout?.photo?.left ?? 31}%`,
-          width: `${layout?.photo?.width ?? 38}%`,
+          left: `${layout?.photo?.left ?? 30.5}%`,
+          width: `${layout?.photo?.width ?? 39}%`,
           height: `${layout?.photo?.height ?? 39.16}%`,
           borderRadius: photoRadius,
         }}
         alt=""
+        draggable={false}
       />
       <input
         type="file"
