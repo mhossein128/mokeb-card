@@ -1,7 +1,7 @@
 # ---- deps ----
 FROM docker.arvancloud.ir/node:20-alpine AS deps
 
-RUN sed -i 's|https://dl-cdn.alpinelinux.org|https://mirror.arvancloud.ir/alpine|g' /etc/apk/repositories \
+RUN sed -i 's|https://dl-cdn.alpinelinux.org|https://mirror.arvancloud.ir|g' /etc/apk/repositories \
   && apk add --no-cache libc6-compat
 
 WORKDIR /app
@@ -44,7 +44,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 
-RUN sed -i 's|https://dl-cdn.alpinelinux.org|https://mirror.arvancloud.ir/alpine|g' /etc/apk/repositories \
+RUN sed -i 's|https://dl-cdn.alpinelinux.org|https://mirror.arvancloud.ir|g' /etc/apk/repositories \
   && addgroup --system --gid 1001 nodejs \
   && adduser --system --uid 1001 nextjs
 
