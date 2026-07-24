@@ -6,18 +6,22 @@ RUN sed -i 's|https://dl-cdn.alpinelinux.org|https://mirror.arvancloud.ir|g' /et
 
 WORKDIR /app
 
-COPY package.json yarn.lock* package-lock.json* ./
+COPY package.json package-lock.json* yarn.lock* ./
 
-ENV npm_config_registry=https://mirror.arvancloud.ir/npm/
+# Prefer npm + package-lock. Use npmmirror (more reliable than Arvan npm which returned 503).
+ENV npm_config_registry=https://registry.npmmirror.com
+ENV yarn_registry=https://registry.npmmirror.com
 
-RUN \
-  if [ -f yarn.lock ]; then \
-    yarn config set registry https://mirror.arvancloud.ir/npm/ \
-    && yarn --frozen-lockfile; \
-  elif [ -f package-lock.json ]; then \
-    npm ci --registry=https://mirror.arvancloud.ir/npm/; \
+RUN set -eux; \
+  if [ -f package-lock.json ]; then \
+    npm ci --registry=https://registry.npmmirror.com \
+      || npm ci --registry=https://mirror.arvancloud.ir/npm/ \
+      || npm ci --registry=https://repo.huaweicloud.com/repository/npm/; \
+  elif [ -f yarn.lock ]; then \
+    yarn config set registry https://registry.npmmirror.com \
+      && yarn --frozen-lockfile; \
   else \
-    npm install --registry=https://mirror.arvancloud.ir/npm/; \
+    npm install --registry=https://registry.npmmirror.com; \
   fi
 
 # ---- builder ----
@@ -30,10 +34,7 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 
-RUN \
-  if [ -f yarn.lock ]; then yarn build; \
-  else npm run build; \
-  fi
+RUN npm run build
 
 # ---- runner ----
 FROM docker.arvancloud.ir/node:20-alpine AS runner
